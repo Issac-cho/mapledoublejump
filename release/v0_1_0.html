@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>헤네시스 더블점프 Beta - 사용자 기능 명세서</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #f3653f; /* 포인트 컬러 */
+            --text-main: #333333;
+            --text-muted: #666666;
+            --bg-body: #f8f9fa;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', 'Source Han Sans KR', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        /* 👇 추가된 버튼 스타일 */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .back-btn:hover {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+            background-color: #fffaf9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(243, 101, 63, 0.15);
+        }
+        /* 👆 여기까지 */
+
+        /* 상단 헤더 영역 */
+        header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 40px 20px;
+            text-align: center;
+            position: relative; /* 버튼 위치 기준점 설정을 위해 추가 */
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #111;
+            font-weight: 700;
+        }
+
+        header p {
+            margin: 10px 0 0;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        /* 메인 컨텐츠 컨테이너 */
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--bg-card);
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+        }
+
+        /* 섹션 제목 (H2) */
+        h2 {
+            font-size: 22px;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        /* 서브 기능 제목 (H3) */
+        h3 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-top: 25px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        h3::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        /* 본문 텍스트 */
+        p {
+            margin: 0 0 15px 16px;
+            color: var(--text-muted);
+            font-size: 15px;
+            word-break: keep-all;
+        }
+
+        /* 리스트 스타일 */
+        ul {
+            margin: 0 0 15px 16px;
+            padding-left: 20px;
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        /* 강조 텍스트 (볼드체) */
+        strong {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        /* 하단 푸터 */
+        footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* 모바일 대응 반응형 */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+            header h1 {
+                font-size: 24px;
+            }
+            /* 모바일에서는 버튼을 조금 더 작게, 헤더 위쪽 여백 확보 */
+            .back-btn {
+                top: 15px;
+                left: 15px;
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+            header {
+                padding-top: 60px; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="/release/index.html" class="back-btn">← 뒤로</a>
+        
+        <h1>🍄 Beta 0.1.0</h1>
+        <p>사용자 기능 명세서 (User Feature Specification)</p>
+    </header>
+
+    <div class="container">
+        
+        <section>
+            <h2>1. 게임 접속 및 로비 (Lobby & Entry)</h2>
+            
+            <h3>간편한 닉네임 접속</h3>
+            <p>복잡한 회원가입이나 비밀번호 없이, 원하는 닉네임만 입력하면 즉시 광장으로 입장할 수 있습니다.</p>
+
+            <h3>닉네임 유효성 검사</h3>
+            <p>공백 문자나 특수문자를 방지하고, 한글/영문/숫자로만 이루어진 깔끔한 닉네임 문화를 유지합니다.</p>
+
+            <h3>직관적인 UX (Enter 키 지원)</h3>
+            <p>마우스 클릭 없이 키보드 <strong>Enter</strong> 키만으로 빠르게 게임에 진입할 수 있습니다.</p>
+        </section>
+
+        <section>
+            <h2>2. 캐릭터 조작 (Character Controls)</h2>
+            
+            <h3>부드러운 좌우 이동</h3>
+            <p>방향키를 이용해 캐릭터를 좌우로 조작할 수 있으며, 이동 방향에 맞춰 자연스러운 걷기 애니메이션이 재생됩니다.</p>
+
+            <h3>다이내믹 더블점프 (이단 점프)</h3>
+            <p><strong>Up 화살표</strong> 또는 <strong>Space 바</strong>를 눌러 기본 점프를 뛰고, 공중에서 한 번 더 눌러 더 높은 곳으로 도약하는 짜릿한 더블점프 액션을 즐길 수 있습니다.</p>
+
+            <h3>자연스러운 물리 엔진</h3>
+            <p>캐릭터가 허공에서 떨어지거나 발판에 착지하는 등 자연스러운 중력과 충돌 판정을 경험할 수 있습니다.</p>
+        </section>
+
+        <section>
+            <h2>3. 실시간 소셜 멀티플레이 (Real-time Multiplayer)</h2>
+            
+            <h3>위치 및 모션 동기화</h3>
+            <p>같은 광장에 접속한 다른 유저들의 이동, 점프, 멈춤 등의 모션이 내 화면에도 지연 없이 실시간으로 똑같이 보입니다.</p>
+
+            <h3>유저 식별 시스템</h3>
+            <ul>
+                <li>맵에 존재하는 모든 캐릭터의 발밑에는 각자의 닉네임이 따라다닙니다.</li>
+                <li>나를 제외한 다른 유저들의 캐릭터에는 무작위 색상 필터(Tint)가 적용되어, 수많은 유저 속에서도 내 캐릭터를 쉽게 구분할 수 있습니다.</li>
+            </ul>
+
+            <h3>실시간 접속/퇴장 반영</h3>
+            <p>누군가 게임에 들어오거나 브라우저를 종료하고 나갔을 때, 맵에 즉각적으로 캐릭터가 나타나거나 사라집니다.</p>
+        </section>
+
+        <section>
+            <h2>4. 인게임 커뮤니케이션 (In-game Chat)</h2>
+            
+            <h3>말풍선 UI</h3>
+            <p>화면 하단의 채팅창에 메시지를 입력하면 캐릭터 머리 위에 즉시 말풍선이 떠오르며, 4초 뒤에 자연스럽게 사라집니다. 말풍선은 캐릭터의 이동을 부드럽게 따라다닙니다.</p>
+
+            <h3>메이플스토리 스타일의 채팅 UX</h3>
+            <ul>
+                <li>마우스 클릭 없이 <strong>Enter</strong> 키를 눌러 즉시 채팅 입력 모드로 전환할 수 있습니다.</li>
+                <li>메시지 작성 후 다시 <strong>Enter</strong>를 누르면 채팅이 전송되고, 즉시 캐릭터 조작 모드로 복귀합니다.</li>
+                <li>공중에서 점프 중이거나 절벽에서 떨어지는 도중에도 채팅을 칠 수 있으며, 이때도 물리 엔진(추락)과 상대방 화면 동기화는 정상적으로 유지됩니다.</li>
+            </ul>
+        </section>
+
+    </div>
+
+    <footer>
+        &copy; 2026 Henesys Double Jump Project. All rights reserved.
+    </footer>
+
+</body>
+</html>

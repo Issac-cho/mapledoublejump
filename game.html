@@ -43,6 +43,8 @@ body{
 .panel input{ width:100%; padding:12px; margin-top:10px; margin-bottom:14px; border-radius:10px; border:1px solid #ddd; font-size:16px; box-sizing:border-box; }
 .panel button{ width:100%; padding:12px; border:none; border-radius:10px; background:#4CAF50; color:white; font-weight:bold; font-size:16px; cursor:pointer; }
 .panel button:hover{ background:#43a047; }
+.panel .release-btn { width:30%; background: #f3653f; margin-top: 10px; float: right; }
+.panel .release-btn:hover { background: #e0532d; }
 
 /* 게임 화면 영역 */
 #gameScreen{
@@ -102,6 +104,7 @@ canvas{ display:block; }
         <h2>🍄 헤네시스 더블점프 Beta 🍄</h2>
         <input type="text" id="nicknameInput" placeholder="닉네임 입력 (엔터 입장)">
         <button onclick="joinPlaza()">광장 입장하기</button>
+        <button class="release-btn" onclick="window.location.href='/release/index.html'">공식 문서 보기</button>
     </div>
 </div>
 

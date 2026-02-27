@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>헤네시스 더블점프 Beta - 업데이트 내역</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --primary:#f3653f;
+            --text:#333;
+            --muted:#666;
+            --bg:#f8f9fa;
+            --card:#fff;
+            --border:#e2e8f0;
+        }
+        body{
+            margin:0;
+            font-family:'Noto Sans KR', sans-serif;
+            background:var(--bg);
+            color:var(--text);
+        }
+        header{
+            background:var(--card);
+            border-bottom:1px solid var(--border);
+            padding:40px 20px;
+            text-align:center;
+            position:relative;
+        }
+        header h1{
+            margin:0;
+            font-size:28px;
+        }
+        header p{
+            margin:10px 0 0;
+            color:var(--muted);
+        }
+        .back-btn{
+            position:absolute;
+            top:20px;
+            left:20px;
+            padding:8px 16px;
+            background:white;
+            border:1px solid var(--border);
+            border-radius:8px;
+            text-decoration:none;
+            color:var(--text);
+            font-size:14px;
+        }
+        .container{
+            max-width:800px;
+            margin:40px auto;
+            padding:0 20px;
+        }
+        .release-list{
+            display:flex;
+            flex-direction:column;
+            gap:15px;
+        }
+        .release-list a{
+            display:flex;
+            justify-content:space-between;
+            padding:15px 20px;
+            background:white;
+            border:1px solid var(--border);
+            border-radius:8px;
+            text-decoration:none;
+            color:var(--text);
+        }
+        .release-list a:hover{
+            background:#f1f3f5;
+        }
+        .release-list p{
+            margin:0;
+        }
+        .release-list p:last-child{
+            font-size:14px;
+            color:#888;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="/" class="back-btn">← 로그인 화면으로</a>
+        <h1>🍄 헤네시스 더블점프</h1>
+        <p>업데이트 내역 (Release Notes)</p>
+    </header>
+
+    <div class="container">
+        <div class="release-list">
+            <a href="/release/v0_1_0.html">
+                <p>Beta 0.1.0</p>
+                <p>오후 4:54 2026.02.27</p>
+            </a>
+        </div>
+    </div>
+
+    <footer style="text-align:center;padding:30px;color:#999;font-size:14px;">
+        © 2026 Henesys Double Jump Project
+    </footer>
+
+</body>
+</html>
