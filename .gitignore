@@ -1,0 +1,41 @@
+# 📦 Node.js 종속성 (절대 Git에 올리면 안 됨!)
+node_modules/
+
+# 🔐 보안 및 인증키 (가장 중요!)
+# AWS EC2 접속용 키나 환경변수 파일이 퍼블릭 깃허브에 올라가면 큰일 납니다.
+*.pem
+*.key
+.env
+
+# 📝 로그 파일 (PM2나 Node.js 실행 중 쌓이는 찌꺼기들)
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 🍏 Mac OS 자동 생성 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 🪟 Windows 자동 생성 파일
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# 💻 에디터 및 IDE 설정 파일 (개발자마다 환경이 다르므로 제외)
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

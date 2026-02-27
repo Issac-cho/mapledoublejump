@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>헤네시스 멀티플레이 테스트 + 채팅</title>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+<style>
+body{
+    margin:0;
+    background:#1e1e1e;
+    font-family:'Malgun Gothic', sans-serif;
+    overflow: hidden; /* 스크롤바 방지 */
+}
+
+/* 로그인 중앙 정렬 */
+.center-wrapper{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+    box-sizing:border-box;
+    position: relative;
+    z-index: 10; /* 게임 화면보다 위에 오도록 */
+}
+
+/* 로그인 패널 */
+.panel{
+    width:100%;
+    max-width:420px;
+    background:white;
+    padding:32px;
+    border-radius:14px;
+    box-shadow:0 10px 35px rgba(0,0,0,0.25);
+    text-align:center;
+}
+
+.panel h2{ margin:0 0 15px 0; white-space:nowrap; }
+.panel input{ width:100%; padding:12px; margin-top:10px; margin-bottom:14px; border-radius:10px; border:1px solid #ddd; font-size:16px; box-sizing:border-box; }
+.panel button{ width:100%; padding:12px; border:none; border-radius:10px; background:#4CAF50; color:white; font-weight:bold; font-size:16px; cursor:pointer; }
+.panel button:hover{ background:#43a047; }
+
+/* 게임 화면 영역 */
+#gameScreen{
+    display:none;
+    position: absolute;
+    top: 0; left: 0;
+    width:100vw;
+    height:100vh;
+}
+
+canvas{ display:block; }
+
+/* 💬 채팅 입력 UI (게임 화면 하단에 고정) */
+#chatContainer {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 10px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    box-sizing: border-box;
+    z-index: 5; /* 캔버스 위에 떠야 함 */
+}
+
+#chatInput {
+    flex-grow: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+}
+
+#chatSendBtn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    background: #FFD700; /* 메이플스토리 느낌의 노란색 */
+    color: #333;
+    font-weight: bold;
+    cursor: pointer;
+}
+#chatSendBtn:hover { background: #FFC107; }
+
+</style>
+</head>
+
+<body>
+
+<div id="loginScreen" class="center-wrapper">
+    <div class="panel">
+        <h2>🍄 헤네시스 더블점프 Beta 🍄</h2>
+        <input type="text" id="nicknameInput" placeholder="닉네임 입력 (엔터 입장)">
+        <button onclick="joinPlaza()">광장 입장하기</button>
+    </div>
+</div>
+
+<div id="gameScreen">
+    <div id="chatContainer">
+        <input type="text" id="chatInput" placeholder="채팅을 입력하세요 (Enter로 전송)">
+        <button id="chatSendBtn" onclick="sendChatMessage()">보내기</button>
+    </div>
+</div>
+
+<script>
+
+// ⚠️ 중요: 실제 EC2 주소나 도메인으로 변경 필요
+const socket = io('http://localhost:3000');
+
+let nickname = "";
+let player;
+let platforms;
+let cursors;
+let otherPlayers;
+let canDoubleJump = false;
+// 채팅 입력을 받고 있는지 확인하는 플래그 (채팅 중 이동 방지용)
+let isTyping = false;
+
+let oldPosition = { x:0, y:0, s:'idle', d:'right' };
+
+//////////////////////////////////////////////////////////
+// DOM 이벤트 리스너 설정
+//////////////////////////////////////////////////////////
+
+// 1. 닉네임 입력창 엔터키 처리
+document.getElementById("nicknameInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter") joinPlaza();
+});
+
+// 2. 채팅 입력창 엔터키 처리
+document.getElementById("chatInput").addEventListener("keydown", function(e){
+    if(e.key === "Enter") {
+        sendChatMessage();
+        this.blur();
+    }
+    e.stopPropagation(); // 엔터키가 게임 조작에 영향 안 주게 막음
+});
+
+document.addEventListener("keydown", function(e){
+    const chatInput = document.getElementById("chatInput");
+    const gameScreen = document.getElementById("gameScreen");
+    
+    // 게임 화면이 켜져 있고, 현재 포커스가 채팅창이 아닐 때 'Enter'를 누르면
+    if(gameScreen.style.display === "block" && document.activeElement !== chatInput && e.key === "Enter") {
+        chatInput.focus();
+        e.preventDefault(); // 채팅창에 엔터키가 입력되는 것을 방지
+    }
+});
+
+// 3. 채팅 입력 중에는 캐릭터가 움직이지 않도록 플래그 제어
+const chatInputField = document.getElementById("chatInput");
+chatInputField.addEventListener('focus', () => { isTyping = true; });
+chatInputField.addEventListener('blur', () => { isTyping = false; });
+
+
+//////////////////////////////////////////////////////////
+// 입장 및 채팅 전송 함수
+//////////////////////////////////////////////////////////
+
+function joinPlaza(){
+    const raw = document.getElementById("nicknameInput").value;
+    nickname = raw.trim();
+    if(nickname.length === 0){ alert("닉네임을 입력해주세요!"); return; }
+    const regex = /^[가-힣a-zA-Z0-9 ]+$/;
+    if(!regex.test(nickname)){ alert("닉네임은 한글, 영문, 숫자만 사용할 수 있습니다."); return; }
+
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("gameScreen").style.display = "block";
+
+    startGame();
+}
+
+// 💬 채팅 메시지 전송 함수
+function sendChatMessage() {
+    const input = document.getElementById("chatInput");
+    const message = input.value.trim();
+    if (message.length > 0) {
+        // 서버로 메시지 전송
+        socket.emit('chat_message', { message: message });
+        input.value = ''; // 입력창 비우기
+        input.focus(); // 계속 입력할 수 있게 포커스 유지
+    }
+}
+
+
+//////////////////////////////////////////////////////////
+// Phaser 게임 로직
+//////////////////////////////////////////////////////////
+function startGame(){
+    const config = {
+        type: Phaser.AUTO,
+        width: 800, height: 600,
+        parent: "gameScreen",
+        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        physics:{ default:'arcade', arcade:{ gravity:{ y:800 }, debug:false } },
+        scene:{ preload, create, update }
+    };
+    new Phaser.Game(config);
+}
+
+function preload(){
+    this.load.image('sky','https://labs.phaser.io/assets/skies/sky4.png');
+    this.load.image('ground','https://labs.phaser.io/assets/sprites/platform.png');
+    this.load.spritesheet('dude','https://labs.phaser.io/assets/sprites/dude.png',{ frameWidth:32, frameHeight:48 });
+}
+
+function create(){
+    this.add.image(400,300,'sky').setScale(2);
+
+    platforms = this.physics.add.staticGroup();
+    platforms.create(400,568,'ground').setScale(2).refreshBody();
+    platforms.create(600,400,'ground');
+    platforms.create(50,250,'ground');
+    platforms.create(750,220,'ground');
+
+    player = this.physics.add.sprite(200,450,'dude');
+    player.setBounce(0.1);
+    player.setCollideWorldBounds(true);
+
+    // 내 닉네임 (발 밑)
+    player.nicknameText = this.add.text(player.x, player.y + 30, nickname, {
+        fontSize: '14px', fill: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', padding: { x:4, y:2 }
+    }).setOrigin(0.5, 0);
+
+    otherPlayers = this.add.group();
+
+    this.anims.create({ key:'left', frames:this.anims.generateFrameNumbers('dude',{ start:0, end:3 }), frameRate:10, repeat:-1 });
+    this.anims.create({ key:'turn', frames:[{ key:'dude', frame:4 }], frameRate:20 });
+    this.anims.create({ key:'right', frames:this.anims.generateFrameNumbers('dude',{ start:5, end:8 }), frameRate:10, repeat:-1 });
+
+    this.physics.add.collider(player, platforms);
+    cursors = this.input.keyboard.createCursorKeys();
+
+    // --- 소켓 이벤트 핸들러 ---
+
+    const joinGame = () => {
+        socket.emit('join_plaza',{ nickname:nickname, x:player.x, y:player.y });
+    };
+    if(socket.connected) joinGame();
+    else socket.on('connect', joinGame);
+
+    socket.on('current_players',(players)=>{
+        Object.keys(players).forEach((id)=>{
+            if(players[id].id !== socket.id) addOtherPlayer(this, players[id]);
+        });
+    });
+
+    socket.on('new_player',(info)=>{ addOtherPlayer(this, info); });
+
+    socket.on('player_moved',(info)=>{
+        otherPlayers.getChildren().forEach((otherPlayer)=>{
+            if(info.id === otherPlayer.playerId){
+                otherPlayer.setPosition(info.x, info.y);
+                // 닉네임 & 말풍선 위치 동기화
+                if(otherPlayer.nicknameText) otherPlayer.nicknameText.setPosition(info.x, info.y + 30);
+                if(otherPlayer.chatBubble) otherPlayer.chatBubble.setPosition(info.x, info.y - 60);
+
+                if(info.s === 'walk'){
+                    if(info.d === 'left') otherPlayer.anims.play('left',true);
+                    else otherPlayer.anims.play('right',true);
+                } else { otherPlayer.anims.play('turn'); }
+            }
+        });
+    });
+
+    socket.on('player_leave',(id)=>{
+        otherPlayers.getChildren().forEach((otherPlayer)=>{
+            if(id === otherPlayer.playerId){
+                if(otherPlayer.nicknameText) otherPlayer.nicknameText.destroy();
+                // 말풍선 삭제
+                if(otherPlayer.chatBubble) otherPlayer.chatBubble.destroy();
+                otherPlayer.destroy();
+            }
+        });
+    });
+
+    // 💬 서버로부터 채팅 메시지를 받았을 때
+    socket.on('chat_updated', (data) => {
+        // 1. 누가 보냈는지 찾기
+        let targetSprite = null;
+        if (data.id === socket.id) {
+            targetSprite = player; // 내가 보낸 메시지
+        } else {
+            // 남이 보낸 메시지
+            otherPlayers.getChildren().forEach((other) => {
+                if (other.playerId === data.id) targetSprite = other;
+            });
+        }
+
+        // 2. 해당 캐릭터 머리 위에 말풍선 띄우기
+        if (targetSprite) {
+            showChatBubble(this, targetSprite, data.message);
+        }
+    });
+}
+
+function addOtherPlayer(scene, info){
+    const otherPlayer = scene.add.sprite(info.x, info.y, 'dude');
+    otherPlayer.setTint(Math.random()*0xffffff);
+    otherPlayer.playerId = info.id;
+    otherPlayer.nicknameText = scene.add.text(info.x, info.y + 30, info.nickname || '알수없음', {
+        fontSize: '14px', fill: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', padding: { x:4, y:2 }
+    }).setOrigin(0.5, 0);
+    otherPlayers.add(otherPlayer);
+}
+
+// 💬 말풍선 생성 도우미 함수
+function showChatBubble(scene, targetSprite, message) {
+    // 기존 말풍선이 있으면 삭제 (중복 방지)
+    if (targetSprite.chatBubble) {
+        targetSprite.chatBubble.destroy();
+        if (targetSprite.chatTimer) targetSprite.chatTimer.remove();
+    }
+
+    // 말풍선 텍스트 객체 생성 (캐릭터 머리 위 -60px 지점)
+    const bubble = scene.add.text(targetSprite.x, targetSprite.y - 60, message, {
+        fontFamily: 'Malgun Gothic, sans-serif',
+        fontSize: '14px',
+        color: '#000000', // 검은색 글씨
+        backgroundColor: '#ffffff', // 흰색 배경
+        padding: { x: 10, y: 6 }, // 내부 여백
+        align: 'center',
+        wordWrap: { width: 150, useAdvancedWrap: true } // 너무 길면 줄바꿈
+    }).setOrigin(0.5, 1); // 하단 중앙을 기준점으로 잡음
+
+    // 테두리 추가 (Phaser 3.60 이상 지원)
+    bubble.setStroke('#cccccc', 2);
+    
+    // 스프라이트에 연결
+    targetSprite.chatBubble = bubble;
+
+    // 4초 뒤에 말풍선 삭제 타이머 설정
+    targetSprite.chatTimer = scene.time.delayedCall(4000, () => {
+        if (targetSprite.chatBubble) {
+            targetSprite.chatBubble.destroy();
+            targetSprite.chatBubble = null;
+        }
+    });
+}
+
+
+function update(){
+    if(!player || !player.body) return;
+
+    // 💬 채팅 입력 중이면 캐릭터 움직임 막기
+    if (isTyping) {
+        player.setVelocityX(0);
+        player.anims.play('turn');
+        // 움직임이 멈췄어도 닉네임/말풍선 위치는 계속 동기화해줘야 함
+        if(player.nicknameText) player.nicknameText.setPosition(player.x, player.y + 30);
+        if(player.chatBubble) player.chatBubble.setPosition(player.x, player.y - 60);
+        return; 
+    }
+
+    // --- 이동 로직 ---
+    let currentState = 'idle';
+    let currentDirection = oldPosition.d;
+
+    if(cursors.left.isDown){
+        player.setVelocityX(-160); player.anims.play('left',true);
+        currentState='walk'; currentDirection='left';
+    } else if(cursors.right.isDown){
+        player.setVelocityX(160); player.anims.play('right',true);
+        currentState='walk'; currentDirection='right';
+    } else {
+        player.setVelocityX(0); player.anims.play('turn');
+    }
+
+    const isGrounded = player.body.touching.down;
+    const jumpPressed = Phaser.Input.Keyboard.JustDown(cursors.space);
+    const upPressed = cursors.up.isDown;
+    
+    if(isGrounded && jumpPressed){
+        player.setVelocityY(-400); canDoubleJump = true;
+    } else if(!isGrounded && canDoubleJump && upPressed && jumpPressed){
+        player.setVelocityY(-350); canDoubleJump = false;
+    }
+
+    // 내 닉네임 & 말풍선 위치 동기화 (캐릭터 따라다니기)
+    if(player.nicknameText) player.nicknameText.setPosition(player.x, player.y + 30);
+    if(player.chatBubble) player.chatBubble.setPosition(player.x, player.y - 60);
+
+    // 서버 전송 (최적화)
+    const xChanged = Math.abs(oldPosition.x - player.x) > 1;
+    const yChanged = Math.abs(oldPosition.y - player.y) > 1;
+
+    if(xChanged || yChanged){
+        socket.emit('player_move',{ x:player.x, y:player.y, s:currentState, d:currentDirection });
+        oldPosition = { x:player.x, y:player.y, s:currentState, d:currentDirection };
+    }
+}
+
+</script>
+</body>
+</html>
