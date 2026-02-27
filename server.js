@@ -10,7 +10,11 @@ app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // 실제 서비스 시에는 프론트엔드 도메인으로 제한해야 합니다.
+    origin: [
+      "http://rene-descartes.store",
+      "http://localhost:5500",
+      "http://127.0.0.1:5500"
+    ],
     methods: ["GET", "POST"]
   }
 });
