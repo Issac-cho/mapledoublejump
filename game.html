@@ -115,7 +115,7 @@ canvas{ display:block; }
 <script>
 
 // ⚠️ 중요: 실제 EC2 주소나 도메인으로 변경 필요
-const socket = io('http://rene-descartes.store:3000');
+const socket = io();
 
 let nickname = "";
 let player;
@@ -352,54 +352,52 @@ function showChatBubble(scene, targetSprite, message) {
 function update(){
     if(!player || !player.body) return;
 
-    // 💬 채팅 입력 중이면 캐릭터 움직임 막기
-    if (isTyping) {
-        player.setVelocityX(0);
-        player.anims.play('turn');
-        // 움직임이 멈췄어도 닉네임/말풍선 위치는 계속 동기화해줘야 함
-        if(player.nicknameText) player.nicknameText.setPosition(player.x, player.y + 30);
-        if(player.chatBubble) player.chatBubble.setPosition(player.x, player.y - 60);
-        return; 
-    }
-
-    // --- 이동 로직 ---
     let currentState = 'idle';
     let currentDirection = oldPosition.d;
 
-    if(cursors.left.isDown){
-        player.setVelocityX(-160); player.anims.play('left',true);
-        currentState='walk'; currentDirection='left';
-    } else if(cursors.right.isDown){
-        player.setVelocityX(160); player.anims.play('right',true);
-        currentState='walk'; currentDirection='right';
+    // 1. 상태에 따른 입력 처리
+    if (isTyping) {
+        // 💬 채팅 중일 때는 좌우 이동만 막음 (중력에 의한 추락은 그대로 적용됨)
+        player.setVelocityX(0);
+        player.anims.play('turn');
     } else {
-        player.setVelocityX(0); player.anims.play('turn');
+        // 🎮 정상 조작 (이동 로직)
+        if(cursors.left.isDown){
+            player.setVelocityX(-160); player.anims.play('left',true);
+            currentState='walk'; currentDirection='left';
+        } else if(cursors.right.isDown){
+            player.setVelocityX(160); player.anims.play('right',true);
+            currentState='walk'; currentDirection='right';
+        } else {
+            player.setVelocityX(0); player.anims.play('turn');
+        }
+
+        const isGrounded = player.body.touching.down;
+        const jumpPressed = Phaser.Input.Keyboard.JustDown(cursors.space);
+        const upPressed = cursors.up.isDown;
+        
+        if(isGrounded && jumpPressed){
+            player.setVelocityY(-400); canDoubleJump = true;
+        } else if(!isGrounded && canDoubleJump && upPressed && jumpPressed){
+            player.setVelocityY(-350); canDoubleJump = false;
+        }
     }
 
-    const isGrounded = player.body.touching.down;
-    const jumpPressed = Phaser.Input.Keyboard.JustDown(cursors.space);
-    const upPressed = cursors.up.isDown;
-    
-    if(isGrounded && jumpPressed){
-        player.setVelocityY(-400); canDoubleJump = true;
-    } else if(!isGrounded && canDoubleJump && upPressed && jumpPressed){
-        player.setVelocityY(-350); canDoubleJump = false;
-    }
-
-    // 내 닉네임 & 말풍선 위치 동기화 (캐릭터 따라다니기)
+    // 2. 내 닉네임 & 말풍선 위치 동기화 (캐릭터 따라다니기)
     if(player.nicknameText) player.nicknameText.setPosition(player.x, player.y + 30);
     if(player.chatBubble) player.chatBubble.setPosition(player.x, player.y - 60);
 
-    // 서버 전송 (최적화)
+    // 3. 📡 서버 전송 (최적화)
+    // 채팅 중이어도, 공중에서 떨어지는 중이라면 y 좌표가 변하므로 서버로 데이터가 날아갑니다!
     const xChanged = Math.abs(oldPosition.x - player.x) > 1;
     const yChanged = Math.abs(oldPosition.y - player.y) > 1;
 
-    if(xChanged || yChanged){
+    // x, y 좌표가 변했거나, 모션/방향이 변했을 때 갱신
+    if(xChanged || yChanged || oldPosition.s !== currentState || oldPosition.d !== currentDirection){
         socket.emit('player_move',{ x:player.x, y:player.y, s:currentState, d:currentDirection });
         oldPosition = { x:player.x, y:player.y, s:currentState, d:currentDirection };
     }
 }
-
 </script>
 </body>
 </html>
