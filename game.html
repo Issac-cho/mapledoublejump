@@ -108,6 +108,12 @@ canvas{ display:block; }
     </div>
 </div>
 
+<div id="voiceControl" style="position: absolute; top: 20px; right: 20px; z-index: 5;">
+    <button id="micBtn" onclick="toggleMic()" style="padding: 10px; border-radius: 8px; font-weight: bold; background: #e74c3c; color: white; border: none; cursor: pointer;">
+        🎤 마이크 켜기 (보이스톡 연결)
+    </button>
+</div>
+
 <div id="gameScreen">
     <div id="chatContainer">
         <input type="text" id="chatInput" placeholder="채팅을 입력하세요 (Enter로 전송)">
@@ -130,6 +136,16 @@ let canDoubleJump = false;
 let isTyping = false;
 
 let oldPosition = { x:0, y:0, s:'idle', d:'right' };
+
+// 🎙️ WebRTC 관련 변수
+let localStream = null; // 내 마이크 오디오 데이터
+const peerConnections = {}; // 나와 연결된 다른 유저들의 통화 연결 객체 모음
+const stunServerConfig = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' }, // 구글의 무료 STUN 서버 (내 공인 IP를 찾아줌)
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
 
 //////////////////////////////////////////////////////////
 // DOM 이벤트 리스너 설정
@@ -401,6 +417,138 @@ function update(){
         oldPosition = { x:player.x, y:player.y, s:currentState, d:currentDirection };
     }
 }
+
+// ==========================================================
+// 🎙️ WebRTC 보이스 채팅 로직
+// ==========================================================
+
+// 마이크가 켜져 있는지 상태를 기억할 변수 추가
+let isMicOn = false;
+
+// 1. 마이크 권한 요청 및 내 오디오 스트림 가져오기 (토글 기능 추가)
+async function toggleMic() {
+    const micBtn = document.getElementById("micBtn");
+
+    // 상황 A: 처음 버튼을 눌러서 마이크 권한을 얻고 통화를 시작할 때
+    if (!localStream) {
+        try {
+            // 브라우저에 마이크 권한 요청
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            isMicOn = true;
+            
+            micBtn.innerText = "🎙️ 마이크 켜짐 (누르면 음소거)";
+            micBtn.style.background = "#4CAF50"; // 초록색
+            
+            console.log("마이크가 켜졌습니다! 다른 유저들과 통화 연결을 시도합니다.");
+
+            // 이미 광장에 있는 유저들에게 내가 전화를 검 (Offer)
+            otherPlayers.getChildren().forEach((other) => {
+                makeWebRTCConnection(other.playerId, true);
+            });
+        } catch (err) {
+            alert("마이크 권한을 허용해야 보이스 채팅이 가능합니다!");
+            console.error("마이크 오류:", err);
+        }
+        return; // 처음 켰을 때는 여기서 함수 종료
+    }
+
+    // 상황 B: 이미 마이크가 켜져 있어서 끄거나(Mute) 다시 켤(Unmute) 때
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+        isMicOn = !isMicOn; // 상태 뒤집기 (true <-> false)
+        audioTrack.enabled = isMicOn; // 핵심: true면 전송, false면 소리 전송 차단(음소거)
+
+        if (isMicOn) {
+            micBtn.innerText = "🎙️ 마이크 켜짐 (누르면 음소거)";
+            micBtn.style.background = "#4CAF50"; // 다시 초록색
+        } else {
+            micBtn.innerText = "🔇 마이크 꺼짐 (누르면 켜짐)";
+            micBtn.style.background = "#e74c3c"; // 다시 빨간색
+        }
+    }
+}
+
+// 2. 1:1 통화 연결(PeerConnection) 객체 생성
+function makeWebRTCConnection(targetId, isCaller) {
+    if (peerConnections[targetId]) return; // 이미 연결되어 있으면 패스
+
+    const rtcPeerConnection = new RTCPeerConnection(stunServerConfig);
+    peerConnections[targetId] = rtcPeerConnection;
+
+    // 내 마이크 소리를 연결선에 올림
+    if (localStream) {
+        localStream.getTracks().forEach(track => rtcPeerConnection.addTrack(track, localStream));
+    }
+
+    // 상대방의 소리가 도착하면 처리할 이벤트
+    rtcPeerConnection.ontrack = (event) => {
+        // 화면에 안 보이는 <audio> 태그를 만들어 상대방 소리를 재생
+        let audioElement = document.getElementById(`audio-${targetId}`);
+        if (!audioElement) {
+            audioElement = document.createElement('audio');
+            audioElement.id = `audio-${targetId}`;
+            audioElement.autoplay = true;
+            document.body.appendChild(audioElement);
+        }
+        audioElement.srcObject = event.streams[0];
+    };
+
+    // 내 네트워크 명함(ICE)이 생성되면 서버를 통해 상대에게 전달
+    rtcPeerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            socket.emit('webrtc_ice_candidate', { target: targetId, candidate: event.candidate });
+        }
+    };
+
+    // 내가 전화를 거는 입장(Caller)이라면 초대장(Offer) 생성
+    if (isCaller) {
+        rtcPeerConnection.createOffer()
+            .then(offer => {
+                rtcPeerConnection.setLocalDescription(offer);
+                socket.emit('webrtc_offer', { target: targetId, sdp: offer });
+            });
+    }
+}
+
+// 3. 서버에서 중매(Signaling) 데이터를 받았을 때의 처리
+
+// 누군가 나에게 통화 초대장(Offer)을 보냄
+socket.on('webrtc_offer', async (data) => {
+    makeWebRTCConnection(data.caller, false);
+    const rtcPeerConnection = peerConnections[data.caller];
+    
+    await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    const answer = await rtcPeerConnection.createAnswer(); // 수락장 생성
+    await rtcPeerConnection.setLocalDescription(answer);
+    
+    socket.emit('webrtc_answer', { target: data.caller, sdp: answer });
+});
+
+// 상대방이 내 초대를 수락(Answer)함
+socket.on('webrtc_answer', async (data) => {
+    const rtcPeerConnection = peerConnections[data.callee];
+    await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+});
+
+// 상대방의 네트워크 명함(ICE)을 받음
+socket.on('webrtc_ice_candidate', async (data) => {
+    const rtcPeerConnection = peerConnections[data.sender];
+    if (rtcPeerConnection) {
+        await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
+});
+
+// 유저가 나가면 통화도 끊기 (기존 player_leave 이벤트 로직과 함께 작동)
+socket.on('player_leave', (id) => {
+    if (peerConnections[id]) {
+        peerConnections[id].close();
+        delete peerConnections[id];
+        
+        // 만들어뒀던 <audio> 태그도 삭제
+        const audioElement = document.getElementById(`audio-${id}`);
+        if (audioElement) audioElement.remove();
+    }
+});
 </script>
 </body>
 </html>

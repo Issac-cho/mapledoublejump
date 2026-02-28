@@ -79,14 +79,36 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 4. 유저가 접속을 끊었을 때 (새로고침, 브라우저 종료 등)
+  // 1. 누군가 상대방에게 통화 초대장(Offer)을 보낼 때
+  socket.on('webrtc_offer', (data) => {
+    // 받는 사람(target)에게 보낸 사람(caller)의 정보와 초대장을 전달
+    socket.to(data.target).emit('webrtc_offer', {
+      sdp: data.sdp,
+      caller: socket.id
+    });
+  });
+
+  // 2. 초대장을 받은 사람이 수락장(Answer)을 보낼 때
+  socket.on('webrtc_answer', (data) => {
+    // 원래 초대장을 보냈던 사람(target)에게 수락장을 전달
+    socket.to(data.target).emit('webrtc_answer', {
+      sdp: data.sdp,
+      callee: socket.id
+    });
+  });
+
+  // 3. 서로의 네트워크 통신 경로(ICE Candidate)를 교환할 때
+  socket.on('webrtc_ice_candidate', (data) => {
+    socket.to(data.target).emit('webrtc_ice_candidate', {
+      candidate: data.candidate,
+      sender: socket.id
+    });
+  });
+
+  // 1. 유저가 접속을 끊었을 때 (새로고침, 브라우저 종료 등)
   socket.on('disconnect', () => {
     console.log(`[퇴장] 소켓 ID: ${socket.id} 님이 떠났습니다.`);
-    
-    // 메모리에서 유저 삭제
     delete players[socket.id];
-    
-    // 남은 유저들에게 해당 유저가 떠났음을 알림 (화면에서 캐릭터 삭제 지시)
     io.emit('player_leave', socket.id);
   });
 });
