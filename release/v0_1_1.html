@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>헤네시스 더블점프 Beta - 사용자 기능 명세서</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #f3653f; /* 포인트 컬러 */
+            --text-main: #333333;
+            --text-muted: #666666;
+            --bg-body: #f8f9fa;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', 'Source Han Sans KR', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        /* 👇 추가된 버튼 스타일 */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .back-btn:hover {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+            background-color: #fffaf9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(243, 101, 63, 0.15);
+        }
+        /* 👆 여기까지 */
+
+        /* 상단 헤더 영역 */
+        header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 40px 20px;
+            text-align: center;
+            position: relative; /* 버튼 위치 기준점 설정을 위해 추가 */
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #111;
+            font-weight: 700;
+        }
+
+        header p {
+            margin: 10px 0 0;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        /* 메인 컨텐츠 컨테이너 */
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: var(--bg-card);
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+        }
+
+        /* 섹션 제목 (H2) */
+        h2 {
+            font-size: 22px;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        /* 서브 기능 제목 (H3) */
+        h3 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-top: 25px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        h3::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        /* 본문 텍스트 */
+        p {
+            margin: 0 0 15px 16px;
+            color: var(--text-muted);
+            font-size: 15px;
+            word-break: keep-all;
+        }
+
+        /* 리스트 스타일 */
+        ul {
+            margin: 0 0 15px 16px;
+            padding-left: 20px;
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        /* 강조 텍스트 (볼드체) */
+        strong {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        /* 하단 푸터 */
+        footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* 모바일 대응 반응형 */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+            header h1 {
+                font-size: 24px;
+            }
+            /* 모바일에서는 버튼을 조금 더 작게, 헤더 위쪽 여백 확보 */
+            .back-btn {
+                top: 15px;
+                left: 15px;
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+            header {
+                padding-top: 60px; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="/release/index.html" class="back-btn">← 뒤로</a>
+        
+        <h1>🍄 Beta 0.1.1</h1>
+        <p>사용자 기능 명세서 (User Feature Specification)</p>
+    </header>
+
+    <div class="container">
+        
+        <section>
+            <h2>1. 인게임 커뮤니케이션 (In-game Chat)</h2>
+            
+            <h3>보이스 기능 추가</h3>
+            <p>우상단 마이크 켜기 버튼을 통해 음성 채팅에 참여할 수 있습니다.</p>
+            <p>버튼을 다시 누름으로써 음소거를 할 수 있습니다.</p>
+
+        </section>
+
+    </div>
+
+    <footer>
+        &copy; 2026 Henesys Double Jump Project. All rights reserved.
+    </footer>
+
+</body>
+</html>
